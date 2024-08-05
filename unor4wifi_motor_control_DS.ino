@@ -1,5 +1,5 @@
 #include "WiFiS3.h"
-#include <Stepper.h>
+#include <AccelStepper.h>
 
 char ssid[] = "iptimeSmart";        // Network SSID (name)
 char pass[] = "12345678";    // Network password (use for WPA, or use as key for WEP)
@@ -8,16 +8,20 @@ int keyIndex = 0;              // Network key index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
-// Stepper motor setup
-const int stepsPerRevolution = 2048;  // Number of steps per revolution for 28BYJ-48 stepper motor
-// Define stepper motor connections to motor driver pins IN1, IN3, IN2, IN4
-Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11);
+// 스테퍼 모터 설정
+const int dirPin = 2;  // Direction 핀
+const int stepPin = 3; // Step 핀
+const int stepsPerRevolution = 200; // 17HS3401 모터의 한 바퀴 회전에 필요한 스텝 수
+
+// A4988 드라이버를 위한 AccelStepper 설정
+AccelStepper stepper(AccelStepper::DRIVER, stepPin, dirPin);
 
 void setup() {
   Serial.begin(9600);      // Initialize serial communication
   
   // Set stepper motor speed (RPM)
-  myStepper.setSpeed(10);  // Set to 10 RPM for better torque
+  stepper.setMaxSpeed(100);  // Set to 1000 steps per second
+  stepper.setAcceleration(50);  // Set acceleration
 
   // Check for WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
@@ -116,7 +120,10 @@ void loop() {
 }
 
 void rotateMotor(int steps) {
-  myStepper.step(steps);  // Move the specified number of steps
+  stepper.move(steps);  // Move the specified number of steps
+  while (stepper.distanceToGo() != 0) {
+    stepper.run();
+  }
 }
 
 void printWifiStatus() {
